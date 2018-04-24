@@ -1,0 +1,26 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Assignment 2</title>
+    <script src="../lib/webgl-utils.js"></script>
+    <script src="../lib/webgl-debug.js"></script>
+    <script src="../lib/cuon-utils.js"></script>
+    <script src="../lib/cuon-matrix.js"></script>
+    <script src="../lib/load-file.js"></script>
+    <script src="../lib/ioSOR.js"></script>
+    <script src="driver.js"></script>
+  </head>
+
+  <body onload="main()">
+    <canvas id="webgl" width="400" height="400">
+    Please use a browser that supports "canvas"
+    </canvas>
+
+    <button type="button" id="lineColor">Color</button>
+
+    <input type="file" id="fileinput" />
+    <button id="update_screen" type="button">Extract SOR</button>
+    <button id="save_canvas" type="button">Save</button>
+    <button id="reset_canvas" type="button">Reset Canvas</button>
+  </body>
+</html>
