@@ -1,7 +1,7 @@
-// drawing a single quad (rectangular polygon) with two triangles
-
 var FSIZE = (new Float32Array()).BYTES_PER_ELEMENT; // size of a vertex coordinate (32-bit float)
-var VSHADER_SOURCE = null; // vertex shader program
+// Vertex shader program
+var VSHADER_SOURCE = null;
+
 var FSHADER_SOURCE = null; // fragment shader program
 
 var g_points = []; // array of mouse presses
@@ -16,6 +16,13 @@ function main() {
     	console.log('Failed to get the rendering context for WebGL');
     	return;
     }
+
+    // // Initialize shaders
+    // if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
+    //     console.log('Failed to intialize shaders.');
+    //     return;
+    // }
+
     // load shader files (calls 'setShader' when done loading)
     loadFile("shader.vert", function(shader_src) {
 	setShader(gl, canvas, gl.VERTEX_SHADER, shader_src); });
@@ -207,7 +214,7 @@ function drawCylinder(gl){
     //More than one click made
     if(n > 1){
         for(i = 0; i < n; i++){
-            var polygon = drawRotatedPolygonWireframe(gl, vert, ind, .2, g_points[i*3], g_points[(i*3)+1], 30);
+            var polygon = drawRotatedPolygonWireframe(gl, vert, ind, 12, .2, g_points[i*3], g_points[(i*3)+1], 30);
             var pVert = polygon[0];
             //var iVert = polygon[1];
             for(p = 0; p < pVert.length; p++){
@@ -224,7 +231,7 @@ function drawCylinder(gl){
                         ind.push(inc1+(y*3));
                         ind.push(inc2+(y*3));
                         ind.push(inc1+(y*3)+1);
-                       /*ind.push(inc2+(y*3)+1); //if you wanted to make x"s not sure
+                       /*ind.push(inc2+(y*3)+1); //to make x's
                         ind.push(inc1+(y*3));
                         ind.push(inc1+(y*3)+1);*/
                     }
@@ -232,7 +239,7 @@ function drawCylinder(gl){
                         ind.push(inc1+(y*3));
                         ind.push(inc2+(y*3));
                         ind.push(inc1);
-                       /* ind.push(inc2); //if you wanted to make x's not sure
+                       /* ind.push(inc2); //to make x's
                         ind.push(inc1+(y*3));
                         ind.push(inc1);*/
                         
@@ -259,23 +266,47 @@ function drawCylinder(gl){
 // draws an n-sided polygon wireframe with radius r centered at (c_x, c_y)
 // polygon starts within xy-plane, and is rotated along y axis rot degrees
 // Taken from hints in example code
-function drawRotatedPolygonWireframe(gl, vert, ind, rad, c_x, c_y, rot) {
+function drawRotatedPolygonWireframe(gl, vert, ind, n, rad, c_x, c_y, rot) {
     var vert = []; // vertex array
     var ind = []; // index array
     // angle (in radians) between sides
-    var angle = (2 * Math.PI) / 12;
+    var angle = (2 * Math.PI) / n;
     // angle of rotation in radians
     rot = (rot/180) * Math.PI;
     // create triangles
-    for (var i = 0; i < 12; i++) {
-        // calculate the vertex locations
-        var x1 = (Math.cos(rot) * (rad * Math.cos(angle * i))) + c_x;
-        var y1 = (rad * Math.sin(angle * i)) + c_y;
+    for (var i = 0; i < n; i++) {
+        // calculate the vertex locations at the origin
+        var x1 = (Math.cos(rot) * (rad * Math.cos(angle * i)));
+        var y1 = (rad * Math.sin(angle * i));
         var z1 = (Math.sin(rot) * (rad * Math.sin(angle * i)));
         var j = i + 1;
-        var x2 = (Math.cos(rot) * (rad * Math.cos(angle * j))) + c_x;
-        var y2 = (rad * Math.sin(angle * j)) + c_y;
+        var x2 = (Math.cos(rot) * (rad * Math.cos(angle * j)));
+        var y2 = (rad * Math.sin(angle * j));
         var z2 = (Math.sin(rot) * (rad * Math.sin(angle * j)));
+
+        //Calculate normal
+        // var axis = -(y1/x1);
+
+        //Rotate around y-axis
+        var rotY = 45;
+        x1 = x1*(Math.cos(rotY * rot)) - z1*(Math.sin(rotY * rot));
+        z1 = x1*(Math.sin(rotY * rot)) + z1*(Math.cos(rotY * rot));
+        x2 = x2*(Math.cos(rotY * rot)) - z2*(Math.sin(rotY * rot));
+        z2 = x2*(Math.sin(rotY * rot)) + z2*(Math.cos(rotY * rot));
+
+        //Rotate around z-axis
+        var rotZ = 60;
+        x1 = x1*(Math.cos(rotZ * rot)) + y1*(Math.sin(rotZ * rot));
+        y1 = -x1*(Math.sin(rotZ * rot)) + y1*(Math.cos(rotZ * rot));
+        x2 = x2*(Math.cos(rotZ * rot)) + y2*(Math.sin(rotZ * rot));
+        y2 = -x2*(Math.sin(rotZ * rot)) + y2*(Math.cos(rotZ * rot));
+
+        //Translate to clicked point
+        x1 += c_x;
+        y1 += c_y;
+        x2 += c_x;
+        y2 += c_y;
+        
         // center vertex
         vert.push(c_x); 
         vert.push(c_y); 
