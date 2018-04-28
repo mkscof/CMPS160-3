@@ -17,12 +17,6 @@ function main() {
     	return;
     }
 
-    // // Initialize shaders
-    // if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
-    //     console.log('Failed to intialize shaders.');
-    //     return;
-    // }
-
     // load shader files (calls 'setShader' when done loading)
     loadFile("shader.vert", function(shader_src) {
 	setShader(gl, canvas, gl.VERTEX_SHADER, shader_src); });
@@ -113,14 +107,15 @@ function initAttributes(gl) {
     // assign buffer to a_Position and enable assignment
     var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
     var a_PointSize = gl.getAttribLocation(gl.program, 'a_PointSize');
-    if (a_Position < 0 || a_PointSize < 0) {
+    var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
+    if (a_Position < 0 || a_PointSize < 0 || a_Color < 0) {
     	console.log("failed to get storage location of attribute");
     	return false;
     }
-    gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 3, 0);
+    gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 7, 0);
     gl.enableVertexAttribArray(a_Position);
-    // gl.vertexAttribPointer(a_PointSize, 1, gl.FLOAT, false, FSIZE * 4, FSIZE * 3);
-    // gl.enableVertexAttribArray(a_PointSize);
+    gl.vertexAttribPointer(a_Color, 4, gl.FLOAT, false, FSIZE * 7, FSIZE * 3);
+    gl.enableVertexAttribArray(a_Color);
     return true;
 }
 
@@ -169,7 +164,6 @@ function click(ev, gl, canvas) {
     g_points.push(x); // x-coordinate
     g_points.push(y); // y-coordinate
     g_points.push(0); // z-coordinate is 0; polyline lines in xy-plane z=0
-    //g_points.push(g_points.length); // point size; make size increase with number of points
     
     // Clear canvas
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -180,10 +174,7 @@ function click(ev, gl, canvas) {
     if (ev.button == 2) {
     	// Clear canvas
     	gl.clear(gl.COLOR_BUFFER_BIT);
-    	/* PUT CODE TO GENERATE VERTICES/INDICES OF CYLINDER AND DRAW HERE */
-    	drawCylinder(gl);
-        //drawRectangles(gl); // EXAMPLE: Generates rectangles whose corners are connected
-    	// drawPolyline(gl); // EXAMPLE: Draw polyline
+    	drawCylinder(gl, 0, 1, 1, 1);
     	// Remove click handle	
     	// canvas.onmousedown = null; 
     }
@@ -193,38 +184,35 @@ function click(ev, gl, canvas) {
 function drawPolyline(gl) {
     // Set vertices
     setVertexBuffer(gl, new Float32Array(g_points));
-    var n = Math.floor(g_points.length/3);
+    var n = Math.floor(g_points.length / 7);
     // Set indices (just an array of the numbers 0 to (n-1), which connects them one by one)
     var ind = [];
     for (i = 0; i < n; ++i)
 	ind.push(i);
     setIndexBuffer(gl, new Uint16Array(ind));
     // Draw points and lines
-    //gl.drawElements(gl.POINTS, n, gl.UNSIGNED_SHORT, 0);
+    // gl.drawElements(gl.POINTS, n, gl.UNSIGNED_SHORT, 0);
     gl.drawElements(gl.LINE_STRIP, n, gl.UNSIGNED_SHORT, 0);
 }
 
 //Draws cylinders from clicked points
-function drawCylinder(gl){
+function drawCylinder(gl, r, g, b, a){
     var n = Math.floor((g_points.length / 3)) - 1;
     var vert = [];
     var ind = [];
-    var inc1 =1;
-    var inc2 =37;
+    var inc1 = 1;
+    var inc2 = 37; //distance to next circle wireframe
     //More than one click made
     if(n > 1){
         for(i = 0; i < n; i++){
-            var polygon = drawRotatedPolygonWireframe(gl, vert, ind, 12, .2, g_points[i*3], g_points[(i*3)+1], 30);
+            var polygon = drawRotatedPolygonWireframe(gl, 12, .2, g_points[i*3], g_points[(i*3)+1], r, g, b, a);
             var pVert = polygon[0];
             //var iVert = polygon[1];
             for(p = 0; p < pVert.length; p++){
                 vert.push(pVert[p]);
             }
-           //  console.log(vert.length);
-           //  console.log(JSON.stringify(vert));
-           //  console.log(JSON.stringify(ind));
-           // console.log(n);
            if(i>0){
+                // var col = shadeRightwards((c_x + x1 + x2)/2, (c_y + y1 + y2)/3, r, g, b, a);
                 //7 lines per face on the cylinder
                 for(y = 0; y < 12; y++){
                     if(y < 11){
@@ -245,19 +233,19 @@ function drawCylinder(gl){
                         
                     }
                 }
-                inc1=inc2;
-                inc2+=36;
+                inc1 = inc2;
+                inc2 += 36;
             }
         }
-        console.log(ind.length);
     }
 
     setVertexBuffer(gl, new Float32Array(vert));
     var len = ind.length;
     // Set indices
     setIndexBuffer(gl, new Uint16Array(ind));
-    // Draw rectangle
-    gl.drawElements(gl.LINE_STRIP, len, gl.UNSIGNED_SHORT, 0);
+    // Draw
+    gl.drawElements(gl.TRIANGLES, ind.length, gl.UNSIGNED_SHORT, 0);
+   // gl.drawElements(gl.LINE_STRIP, len, gl.UNSIGNED_SHORT, 0);
     // Reset vertices and indices
     var vert = [];
     var ind = [];
@@ -266,9 +254,10 @@ function drawCylinder(gl){
 // draws an n-sided polygon wireframe with radius r centered at (c_x, c_y)
 // polygon starts within xy-plane, and is rotated along y axis rot degrees
 // Taken from hints in example code
-function drawRotatedPolygonWireframe(gl, vert, ind, n, rad, c_x, c_y, rot) {
+function drawRotatedPolygonWireframe(gl, n, rad, c_x, c_y, r, g, b, a) {
     var vert = []; // vertex array
     var ind = []; // index array
+    var rot = 30;
     // angle (in radians) between sides
     var angle = (2 * Math.PI) / n;
     // angle of rotation in radians
@@ -283,9 +272,6 @@ function drawRotatedPolygonWireframe(gl, vert, ind, n, rad, c_x, c_y, rot) {
         var x2 = (Math.cos(rot) * (rad * Math.cos(angle * j)));
         var y2 = (rad * Math.sin(angle * j));
         var z2 = (Math.sin(rot) * (rad * Math.sin(angle * j)));
-
-        //Calculate normal
-        // var axis = -(y1/x1);
 
         //Rotate around y-axis
         var rotY = 45;
@@ -306,33 +292,61 @@ function drawRotatedPolygonWireframe(gl, vert, ind, n, rad, c_x, c_y, rot) {
         y1 += c_y;
         x2 += c_x;
         y2 += c_y;
+
+        // Calculate normal
+        // var axis = -(y1/x1);
+
+        //Shade based on position, need to change to based on normal
+        var col = shadeRightwards((c_x + x1 + x2)/2, (c_y + y1 + y2)/3, r, g, b, a);
         
         // center vertex
         vert.push(c_x); 
         vert.push(c_y); 
         vert.push(0);
+        vert.push(col[0]);
+        vert.push(col[1]);
+        vert.push(col[2]);
+        vert.push(col[3]);
         // first outer vertex
         vert.push(x1);
         vert.push(y1);
-        vert.push(z1);
+        vert.push(0);
+        vert.push(col[0]);
+        vert.push(col[1]);
+        vert.push(col[2]);
+        vert.push(col[3]);
         // second outer vertex
         vert.push(x2);
         vert.push(y2);
-        vert.push(z2);
+        vert.push(0);
+        vert.push(col[0]);
+        vert.push(col[1]);
+        vert.push(col[2]);
+        vert.push(col[3]);
         // connect vertices
         ind.push(i * 3); // start at center
         ind.push((i * 3) + 1); // go to first outer vertex
         ind.push((i * 3) + 2); // go to second outer vertex
-        ind.push(i * 3); // go back to center
+        //ind.push(i * 3); // go back to center
     }
     // set buffers
     setVertexBuffer(gl, new Float32Array(vert));
     setIndexBuffer(gl, new Uint16Array(ind));
     // draw polygon
-    gl.drawElements(gl.LINE_STRIP, ind.length, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, ind.length, gl.UNSIGNED_SHORT, 0);
+    //gl.drawElements(gl.LINE_STRIP, ind.length, gl.UNSIGNED_SHORT, 0);
 
     return [vert, ind];
 }
+
+function shadeRightwards(x, y, r, g, b, a) {
+    var col = [r, g, b, a]; // shaded color
+    var ratio = (1 - ((x + 1) / 2)); // measure of how far right (normalized)
+    for (j = 0; j < 3; j++)
+        col[j] = col[j] * ratio;
+    return col;
+}
+
 //Gets axis of rotation
 // function getAxis(gl, x1, y1, z1, x2, y2, z2){
 //     var yFinal = -1.0 / (y2 - y1);
@@ -351,52 +365,6 @@ function drawRotatedPolygonWireframe(gl, vert, ind, n, rad, c_x, c_y, rot) {
 //     //vector.normalize();
 
 //     return vector;
-// }
-
-// // Draws connected rectangles between clicked points
-//     var n = g_points.length - 1; // Number of rectangles
-//     var vert = [];
-//     var ind = [];
-//     // Draw each individual rectangle separately
-//     /* NOTE: You can also draw them all at once (single call to 'drawElements') if you want */
-//     for (i = 0; i < n; ++i) {
-//     	// First corner of rectangle
-//     	vert.push(g_points[i*4]); // x coord
-//     	vert.push(g_points[i*4 + 1]); // y coord
-//     	vert.push(0); // z coord
-//     	vert.push(1); // Point size
-//     	ind.push(0);
-//     	// Second corner of rectangle
-//     	vert.push(g_points[i*4]);
-//     	vert.push(g_points[(i+1)*4 + 1]);
-//     	vert.push(0);
-//     	vert.push(1);
-//     	ind.push(1);
-//     	// Third corner of rectangle
-//     	vert.push(g_points[(i+1)*4]);
-//     	vert.push(g_points[(i+1)*4 + 1]);
-//     	vert.push(0);
-//     	vert.push(1);
-//     	ind.push(2);
-//     	// Fourth corner of rectangle
-//     	vert.push(g_points[(i+1)*4]);
-//     	vert.push(g_points[i*4 + 1]);
-//     	vert.push(0);
-//     	vert.push(1);
-//     	ind.push(3);
-//     	// Connect First corner again to wrap lines around
-//     	ind.push(0);
-//     	// Set vertices
-//     	setVertexBuffer(gl, new Float32Array(vert));
-//     	var n = ind.length;
-//     	// Set indices
-//     	setIndexBuffer(gl, new Uint16Array(ind));
-//      	// Draw rectangle
-//     	gl.drawElements(gl.LINE_STRIP, n, gl.UNSIGNED_SHORT, 0);
-//     	// Reset vertices and indices
-//     	vert = [];
-//     	ind = [];
-//     }
 // }
 
 // loads SOR file and draws object

@@ -5,6 +5,7 @@
 // these are passed from the main code (javascript) using 'gl.bufferData'
 attribute vec4 a_Position; // Position of vertex
 attribute float a_PointSize; // Size of points
+attribute vec4 a_Color; //Color
 
 // uniform variables are global porperties applied uniformly to all vertices
 // these are also passed from the main code (javascript) using 'gl.uniform[1,2,3,4][i,f]'
@@ -25,8 +26,8 @@ void main() {
   }
   gl_PointSize = a_PointSize;
   if (u_Invert == 0) {
-    v_Color = vec4(1.0, 0.0, 0.0, 1.0);
+    v_Color = a_Color;
   } else {
-    v_Color = vec4(0.0, 1.0, 1.0, 1.0);
+    v_Color = a_Color;
   }
 }
